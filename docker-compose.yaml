@@ -1,0 +1,96 @@
+version: "3"
+
+services:
+  proxy:
+    container_name: lab14-proxy-bf24
+    image: dockware/proxy:latest
+    ports:
+      - "8902:80"
+      - "454:443"
+      - "8888:8888"
+      - "9993:9999"
+      - "9994:9998"
+    depends_on:
+      - shopware
+    volumes:
+      - "./proxy/shop-1.conf:/etc/nginx/conf.d/shop-1.conf"
+#      - "./proxy/shop-2.conf:/etc/nginx/conf.d/shop-2.conf"
+
+  mysql:
+    image: mariadb:10.7
+    container_name: lab14-mariadb-bf24
+    ports:
+      - "3325:3306"
+    volumes:
+      - "./maridb/:/var/lib/mysql/"
+      - "./__transfer/:/var/__transfer"
+    networks:
+      - web-lab14
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_USER=root
+      - MYSQL_DATABASE=shopware
+
+  shopware:
+    image: dockware/dev:6.4.11.1
+    container_name: lab14-shopware-bf24
+    ports:
+      - "8822:80"
+      - "3328:3306"
+      - "2233:22"
+      - "9987:9999"
+    volumes:
+      - "db_volume:/var/lib/mysql"
+#      - "shopware_volume:/var/www/html"
+      - "./shopware/:/var/www/html/"
+    networks:
+      - web-lab14
+    environment:
+      # default = 0, recommended to be OFF for frontend devs
+      - XDEBUG_ENABLED=1
+      # default = latest PHP, optional = specific version
+      - PHP_VERSION=7.4
+      - XDEBUG_CONFIG:"remote_host=nb228b"
+      - SSH_USER=dockware
+      - SSH_PWD=dockware
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - '8814:80'
+    environment:
+      PMA_HOST: "mysql"
+      PMA_PORT: "3306"
+      PMA_USER: "root"
+      PMA_PASSWORD: "root"
+      PMA_VERBOSE: 0
+      MYSQL_USERNAME: "root"
+      MYSQL_ROOT_PASSWORD: "root"
+    networks:
+      - web-lab14
+    volumes:
+      - "db_volume:/var/lib/mysql"
+      - "./pma/html/:/var/www/html/"
+      - "./pma/etc/:/etc/phpmyadmin/"
+    container_name: lab14-phpmyadmin-bf24
+volumes:
+  db_volume:
+    driver: local
+  mariadb_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/www/dockerhosts/lab14-dockware-bf24/mariadb
+  shopware_volume:
+    driver: local
+    driver_opts:
+        type: none
+        o: bind
+        device: /var/www/dockerhosts/lab14-dockware-bf24/shopware
+
+networks:
+  web-lab14:
+    external: false
